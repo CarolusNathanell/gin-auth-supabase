@@ -49,7 +49,7 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 		return
 	}
 
-	imgServeUrl := os.Getenv("URL") + "public/snapshots/"
+	imgServeUrl := os.Getenv("BE_CORE_URL") + "public/snapshots/"
 	req.ImagePath = imgServeUrl + req.SourceID.String() + "/" + newFileName
 	c.JSON(http.StatusCreated, snapshot)
 }
