@@ -20,16 +20,17 @@ import (
 )
 
 func main() {
-	godotenv.Load()
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
-	// 1. Connect to Supabase Postgres via pgxpool
 	pool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
 		log.Fatal("Unable to connect to database:", err)
 	}
 	defer pool.Close()
 
-	// 2. Initialize sqlc Queries and DI
 	queries := db.New(pool)
 	authService := auth.NewService(queries)
 	SourcesService := sources.NewService(queries)
@@ -49,11 +50,11 @@ func main() {
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"}, // Your frontend URL
+		AllowOrigins:     []string{os.Getenv("FE_URL"), os.Getenv("BE_AI_URL")},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
+		AllowCredentials: false,
 		MaxAge:           12 * time.Hour,
 	}))
 

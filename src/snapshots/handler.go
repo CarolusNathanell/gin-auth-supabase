@@ -42,7 +42,7 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 
 	extension := filepath.Ext(file.Filename)
 	newFileName := snapshot.ID.String() + extension
-	dst := "./public/snapshots/" + req.SourceID.String() + "/" + newFileName
+	dst := "./public/snapshots/" + snapshot.SourceID.String() + "/" + newFileName
 
 	if err := c.SaveUploadedFile(file, dst); err != nil {
 		c.JSON(500, gin.H{"error": "Failed to save file"})
@@ -50,7 +50,7 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 	}
 
 	imgServeUrl := os.Getenv("BE_CORE_URL") + "public/snapshots/"
-	req.ImagePath = imgServeUrl + req.SourceID.String() + "/" + newFileName
+	req.ImagePath = imgServeUrl + snapshot.SourceID.String() + "/" + newFileName
 	c.JSON(http.StatusCreated, snapshot)
 }
 

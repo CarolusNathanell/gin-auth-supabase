@@ -4,6 +4,7 @@
 | DATABASE_URL | Direct connection to the database |
 | JWT_SECRET   | JWT secret key                    |
 | BE_CORE_URL  | URL of Backend Core               |
+| BE_AI_URL    | URL of Backend AI                 |
 | FE_URL       | URL of Frontend                   |
 
 ## How to run
@@ -18,11 +19,11 @@
 `make migration name=<version name>`
 Create a new migration version
 
-`make migration-up`
+`make migrate-up`
 Increases the migration version and applies it to the connected database in the `.env` file (`DATABASE_URL`)
 
-`make migration-down`
+`make migrate-down`
 Reduces the migration version and applies it to the connected database in the `.env` file (`DATABASE_URL`)
 
-`make migration-status`
+`make migrate-status`
 Checks the migration version of the connected database in the `.env` file (`DATABASE_URL`)
