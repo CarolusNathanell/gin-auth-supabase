@@ -65,7 +65,7 @@ type HeadCountLog struct {
 }
 
 type Snapshot struct {
-	ID              int32              `json:"id"`
+	ID              uuid.UUID          `json:"id"`
 	SourceID        uuid.UUID          `json:"source_id"`
 	ImagePath       string             `json:"image_path"`
 	HeadCountAtTime int32              `json:"head_count_at_time"`

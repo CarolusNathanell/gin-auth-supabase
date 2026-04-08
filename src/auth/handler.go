@@ -40,6 +40,7 @@ func (h *Handler) HandleLogin(c *gin.Context) {
 	token, user, err := h.svc.Login(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		println(err.Error())
 		return
 	}
 

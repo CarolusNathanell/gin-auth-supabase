@@ -4,13 +4,16 @@ import (
 	"context"
 	"log"
 	"os"
+	"time"
 
 	"gin-auth-supabase/src/auth"
 	"gin-auth-supabase/src/db"
 	headCountLog "gin-auth-supabase/src/head_count_log"
 	"gin-auth-supabase/src/snapshots"
 	"gin-auth-supabase/src/sources"
+	websock "gin-auth-supabase/src/websocket"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -40,7 +43,22 @@ func main() {
 	headCountLogHandler := headCountLog.NewHandler(headCountLogService)
 	snapshotsHandler := snapshots.NewHandler(snapshotsService)
 
+	wsHub := websock.NewWSHub()
+	go wsHub.Run()
+
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"}, // Your frontend URL
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	r.POST("/logs", websock.ReceiveLogs(wsHub))
+	r.GET("/ws", websock.HandleWS(wsHub))
 
 	r.Static("public/snapshots", "./public/snapshots/")
 
@@ -77,7 +95,7 @@ func main() {
 		// }
 
 		headCountLogApi := Api.Group("/logs")
-		// headCountLogApi.Use(auth.AuthMiddleware())
+		headCountLogApi.Use(auth.AuthMiddleware())
 		{
 			headCountLogApi.POST("", headCountLogHandler.HandleAdd)
 			headCountLogApi.GET("/:sourceId", headCountLogHandler.HandleRequestBySource)

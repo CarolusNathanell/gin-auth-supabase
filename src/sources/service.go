@@ -55,6 +55,15 @@ func (s *Service) Request(ctx context.Context) (*[]db.Source, error) {
 	return &sources, nil
 }
 
+func (s *Service) RequestSourcesId(ctx context.Context) (*[]uuid.UUID, error) {
+	sources, err := s.q.GetSourcesId(ctx)
+	if err != nil {
+		return nil, errors.New("Source not found")
+	}
+
+	return &sources, nil
+}
+
 func (s *Service) RequestByID(ctx context.Context, sourceId uuid.UUID) (*db.Source, error) {
 	source, err := s.q.GetSourceByID(ctx, sourceId)
 	if err != nil {

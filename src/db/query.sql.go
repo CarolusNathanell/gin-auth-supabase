@@ -62,7 +62,7 @@ RETURNING id, source_id, image_path, head_count_at_time, created_at
 `
 
 type CreateSnapshotParams struct {
-	ID              int32     `json:"id"`
+	ID              uuid.UUID `json:"id"`
 	SourceID        uuid.UUID `json:"source_id"`
 	ImagePath       string    `json:"image_path"`
 	HeadCountAtTime int32     `json:"head_count_at_time"`
@@ -178,7 +178,7 @@ DELETE FROM snapshots WHERE id = $1
 RETURNING id, source_id, image_path, head_count_at_time, created_at
 `
 
-func (q *Queries) DeleteSnapshot(ctx context.Context, id int32) (Snapshot, error) {
+func (q *Queries) DeleteSnapshot(ctx context.Context, id uuid.UUID) (Snapshot, error) {
 	row := q.db.QueryRow(ctx, deleteSnapshot, id)
 	var i Snapshot
 	err := row.Scan(
@@ -247,7 +247,7 @@ const getSnapshotById = `-- name: GetSnapshotById :one
 SELECT id, source_id, image_path, head_count_at_time, created_at FROM snapshots WHERE id = $1
 `
 
-func (q *Queries) GetSnapshotById(ctx context.Context, id int32) (Snapshot, error) {
+func (q *Queries) GetSnapshotById(ctx context.Context, id uuid.UUID) (Snapshot, error) {
 	row := q.db.QueryRow(ctx, getSnapshotById, id)
 	var i Snapshot
 	err := row.Scan(
@@ -336,6 +336,30 @@ func (q *Queries) GetSources(ctx context.Context) ([]Source, error) {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSourcesId = `-- name: GetSourcesId :many
+SELECT id FROM sources
+`
+
+func (q *Queries) GetSourcesId(ctx context.Context) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, getSourcesId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

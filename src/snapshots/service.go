@@ -18,7 +18,6 @@ func NewService(q *db.Queries) *Service {
 
 func (s *Service) Add(ctx context.Context, req SnapshotAdd) (*db.Snapshot, error) {
 	source, err := s.q.CreateSnapshot(ctx, db.CreateSnapshotParams{
-		ID:              req.ID,
 		SourceID:        req.SourceID,
 		ImagePath:       req.ImagePath,
 		HeadCountAtTime: req.HeadCountAtTime,
@@ -26,7 +25,7 @@ func (s *Service) Add(ctx context.Context, req SnapshotAdd) (*db.Snapshot, error
 	return &source, err
 }
 
-func (s *Service) RequestById(ctx context.Context, snapshotId int32) (*db.Snapshot, error) {
+func (s *Service) RequestById(ctx context.Context, snapshotId uuid.UUID) (*db.Snapshot, error) {
 	source, err := s.q.GetSnapshotById(ctx, snapshotId)
 	if err != nil {
 		return nil, errors.New("Snapshot not found")
@@ -44,7 +43,7 @@ func (s *Service) RequestBySource(ctx context.Context, sourceId uuid.UUID) (*[]d
 	return &sources, nil
 }
 
-func (s *Service) DeleteById(ctx context.Context, snapshotId int32) (*db.Snapshot, error) {
+func (s *Service) DeleteById(ctx context.Context, snapshotId uuid.UUID) (*db.Snapshot, error) {
 	snapshot, err := s.q.DeleteSnapshot(ctx, snapshotId)
 	if err != nil {
 		return nil, errors.New("Snapshot not found")

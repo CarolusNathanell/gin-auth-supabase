@@ -30,7 +30,7 @@ CREATE TABLE users (
 );
 
 CREATE TABLE snapshots (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY,
     source_id UUID NOT NULL REFERENCES sources(id),
     image_path TEXT NOT NULL,
     head_count_at_time INT NOT NULL,

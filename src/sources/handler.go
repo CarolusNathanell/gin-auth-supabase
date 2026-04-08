@@ -40,6 +40,16 @@ func (h *Handler) HandleRequest(c *gin.Context) {
 	c.JSON(http.StatusOK, SourcesResponse{Sources: sources})
 }
 
+func (h *Handler) HandleRequestSourceID(c *gin.Context) {
+	sources, err := h.svc.RequestSourcesId(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, SourcesResponse{Sources: sources})
+}
+
 func (h *Handler) HandleRequestById(c *gin.Context) {
 	sourceId, err := uuid.Parse(c.Param("id"))
 	if err != nil {

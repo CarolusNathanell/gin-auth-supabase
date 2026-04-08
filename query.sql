@@ -58,6 +58,9 @@ RETURNING *;
 -- name: GetSources :many
 SELECT * FROM sources;
 
+-- name: GetSourcesId :many
+SELECT id FROM sources;
+
 -- name: GetSourceByID :one
 SELECT * FROM sources WHERE id = $1;
 

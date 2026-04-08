@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -34,8 +34,14 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 		return
 	}
 
+	snapshot, err := h.svc.Add(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	extension := filepath.Ext(file.Filename)
-	newFileName := uuid.New().String() + extension
+	newFileName := snapshot.ID.String() + extension
 	dst := "./public/snapshots/" + req.SourceID.String() + "/" + newFileName
 
 	if err := c.SaveUploadedFile(file, dst); err != nil {
@@ -45,12 +51,6 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 
 	imgServeUrl := os.Getenv("URL") + "public/snapshots/"
 	req.ImagePath = imgServeUrl + req.SourceID.String() + "/" + newFileName
-
-	snapshot, err := h.svc.Add(c.Request.Context(), req)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
 	c.JSON(http.StatusCreated, snapshot)
 }
 
@@ -71,13 +71,13 @@ func (h *Handler) HandleRequestsBySource(c *gin.Context) {
 }
 
 func (h *Handler) HandleRequestById(c *gin.Context) {
-	snapshotId, err := strconv.ParseInt(c.Param("snapshotId"), 10, 32)
+	snapshotId, err := uuid.Parse(c.Param("snapshotId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	snapshot, err := h.svc.RequestById(c.Request.Context(), int32(snapshotId))
+	snapshot, err := h.svc.RequestById(c.Request.Context(), snapshotId)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -87,17 +87,23 @@ func (h *Handler) HandleRequestById(c *gin.Context) {
 }
 
 func (h *Handler) HandleDeleteById(c *gin.Context) {
-	snapshotId, err := strconv.ParseInt(c.Param("snapshotId"), 10, 32)
+	snapshotId, err := uuid.Parse(c.Param("snapshotId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	source, err := h.svc.DeleteById(c.Request.Context(), int32(snapshotId))
+	snapshot, err := h.svc.DeleteById(c.Request.Context(), snapshotId)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, source)
+	filePath := "./" + strings.TrimPrefix(snapshot.ImagePath, os.Getenv("URL"))
+	if err := os.Remove(filePath); err != nil {
+		c.JSON(500, gin.H{"error": "Failed to save file"})
+		return
+	}
+
+	c.JSON(http.StatusOK, snapshot)
 }
