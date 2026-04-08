@@ -51,18 +51,14 @@ func (q *Queries) CreateHeadCountLog(ctx context.Context, arg CreateHeadCountLog
 
 const createSnapshot = `-- name: CreateSnapshot :one
 INSERT INTO snapshots (
-    id,
     source_id,
     image_path,
     head_count_at_time
-) VALUES (
-    $1, $2, $3, $4
-)
-RETURNING id, source_id, image_path, head_count_at_time, created_at
+) VALUES ($1, $2, $3)
+RETURNING id, source_id, image_path, head_count_at_time, created_at;
 `
 
 type CreateSnapshotParams struct {
-	ID              uuid.UUID `json:"id"`
 	SourceID        uuid.UUID `json:"source_id"`
 	ImagePath       string    `json:"image_path"`
 	HeadCountAtTime int32     `json:"head_count_at_time"`
@@ -70,7 +66,6 @@ type CreateSnapshotParams struct {
 
 func (q *Queries) CreateSnapshot(ctx context.Context, arg CreateSnapshotParams) (Snapshot, error) {
 	row := q.db.QueryRow(ctx, createSnapshot,
-		arg.ID,
 		arg.SourceID,
 		arg.ImagePath,
 		arg.HeadCountAtTime,
