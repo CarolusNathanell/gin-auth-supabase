@@ -1,4 +1,4 @@
-CREATE TYPE SourceType AS ENUM ('RTSP', 'MP4', 'Webcam');
+CREATE TYPE SourceType AS ENUM ('RTSP', 'MP4', 'Webcam', 'Youtube', 'Other');
 
 CREATE TABLE sources (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -30,7 +30,7 @@ CREATE TABLE users (
 );
 
 CREATE TABLE snapshots (
-    id UUID PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     source_id UUID NOT NULL REFERENCES sources(id),
     image_path TEXT NOT NULL,
     head_count_at_time INT NOT NULL,

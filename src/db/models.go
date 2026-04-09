@@ -15,9 +15,11 @@ import (
 type Sourcetype string
 
 const (
-	SourcetypeRTSP   Sourcetype = "RTSP"
-	SourcetypeMP4    Sourcetype = "MP4"
-	SourcetypeWebcam Sourcetype = "Webcam"
+	SourcetypeRTSP    Sourcetype = "RTSP"
+	SourcetypeMP4     Sourcetype = "MP4"
+	SourcetypeWebcam  Sourcetype = "Webcam"
+	SourcetypeYoutube Sourcetype = "Youtube"
+	SourcetypeOther   Sourcetype = "Other"
 )
 
 func (e *Sourcetype) Scan(src interface{}) error {

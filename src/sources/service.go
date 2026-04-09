@@ -31,6 +31,11 @@ func (s *Service) Add(ctx context.Context, req SourcesAdd) (*db.Source, error) {
 		if !strings.HasPrefix(req.Url, "http://") && !strings.HasPrefix(req.Url, "https://") {
 			return nil, errors.New("Webcam streams must be HTTP or HTTPS")
 		}
+	case "Youtube":
+		if !strings.HasPrefix(req.Url, "http://") && !strings.HasPrefix(req.Url, "https://") {
+			return nil, errors.New("Youtube streams must be HTTP or HTTPS")
+		}
+	case "Other":
 	default:
 		return nil, errors.New("Invalid source type")
 	}

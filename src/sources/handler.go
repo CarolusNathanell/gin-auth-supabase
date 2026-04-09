@@ -1,7 +1,10 @@
 package sources
 
 import (
+	"bytes"
+	"encoding/json"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -19,6 +22,44 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 	var req SourcesAdd
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// request ke BE AI
+	var parseReq struct {
+		Type string `json:"type"`
+		Url  string `json:"url"`
+	}
+	parseReq.Type = req.Type
+	parseReq.Url = req.Url
+
+	jsonReq, err := json.Marshal(parseReq)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
+
+	resp, err := http.Post(os.Getenv("BE_AI_URL")+"/probe", "application/json", bytes.NewBuffer(jsonReq))
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Probe service unreachable"})
+		return
+	}
+	defer resp.Body.Close()
+
+	var probeResult struct {
+		Exists bool   `json:"exists"`
+		Detail string `json:"detail"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&probeResult); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse probe response"})
+		return
+	}
+
+	if !probeResult.Exists {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":  "Source verification failed",
+			"detail": probeResult.Detail,
+		})
 		return
 	}
 
