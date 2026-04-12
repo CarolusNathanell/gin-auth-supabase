@@ -12,6 +12,49 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Audittype string
+
+const (
+	AudittypeCREATE Audittype = "CREATE"
+	AudittypeUPDATE Audittype = "UPDATE"
+	AudittypeDELETE Audittype = "DELETE"
+)
+
+func (e *Audittype) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = Audittype(s)
+	case string:
+		*e = Audittype(s)
+	default:
+		return fmt.Errorf("unsupported scan type for Audittype: %T", src)
+	}
+	return nil
+}
+
+type NullAudittype struct {
+	Audittype Audittype `json:"audittype"`
+	Valid     bool      `json:"valid"` // Valid is true if Audittype is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAudittype) Scan(value interface{}) error {
+	if value == nil {
+		ns.Audittype, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.Audittype.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAudittype) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.Audittype), nil
+}
+
 type Sourcetype string
 
 const (
@@ -55,6 +98,16 @@ func (ns NullSourcetype) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.Sourcetype), nil
+}
+
+type AuditLog struct {
+	ID        uuid.UUID          `json:"id"`
+	UserID    uuid.UUID          `json:"user_id"`
+	Action    Audittype          `json:"action"`
+	TableName string             `json:"table_name"`
+	OldValue  []byte             `json:"old_value"`
+	NewValue  []byte             `json:"new_value"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type HeadCountLog struct {

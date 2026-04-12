@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	auditLog "gin-auth-supabase/src/audit_logs"
 	"gin-auth-supabase/src/auth"
 	"gin-auth-supabase/src/db"
 	headCountLog "gin-auth-supabase/src/head_count_log"
@@ -33,16 +34,16 @@ func main() {
 
 	queries := db.New(pool)
 	authService := auth.NewService(queries)
-	SourcesService := sources.NewService(queries)
-	// attendanceLogService := attendanceLog.NewService(queries)
+	SourcesService := sources.NewService(queries, pool)
 	headCountLogService := headCountLog.NewService(queries)
 	snapshotsService := snapshots.NewService(queries)
+	auditLogService := auditLog.NewService(queries)
 
 	authHandler := auth.NewHandler(authService)
 	SourcesHandler := sources.NewHandler(SourcesService)
-	// attendanceLogHandler := attendanceLog.NewHandler(attendanceLogService)
 	headCountLogHandler := headCountLog.NewHandler(headCountLogService)
 	snapshotsHandler := snapshots.NewHandler(snapshotsService)
+	auditLogHandler := auditLog.NewHandler(auditLogService)
 
 	wsHub := websock.NewWSHub()
 	go wsHub.Run()
@@ -101,12 +102,19 @@ func main() {
 			headCountLogApi.GET("/:sourceId", headCountLogHandler.HandleRequestBySource)
 		}
 
-		SnapshotsApi := Api.Group("/snapshots")
+		snapshotsApi := Api.Group("/snapshots")
 		{
-			SnapshotsApi.POST("", snapshotsHandler.HandleAdd)
-			SnapshotsApi.GET("/:sourceId", snapshotsHandler.HandleRequestsBySource)
-			SnapshotsApi.GET("/:sourceId/:snapshotId", snapshotsHandler.HandleRequestById)
-			SnapshotsApi.DELETE("/:sourceId/:snapshotId", snapshotsHandler.HandleDeleteById)
+			snapshotsApi.POST("", snapshotsHandler.HandleAdd)
+			snapshotsApi.GET("/:sourceId", snapshotsHandler.HandleRequestsBySource)
+			snapshotsApi.GET("/:sourceId/:snapshotId", snapshotsHandler.HandleRequestById)
+			snapshotsApi.DELETE("/:sourceId/:snapshotId", snapshotsHandler.HandleDeleteById)
+		}
+
+		auditLogApi := Api.Group("/crudlogs")
+		{
+			// auditLogApi.POST("", auditLogHandler.HandleAdd)
+			auditLogApi.GET("", auditLogHandler.HandleRequest)
+			auditLogApi.GET("/:userId", auditLogHandler.HandleRequestByUserId)
 		}
 	}
 

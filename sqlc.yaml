@@ -9,7 +9,7 @@ sql:
         out: "src/db"
         sql_package: "pgx/v5"
         emit_json_tags: true
-        # This tells sqlc to use the pgx/v5 driver features
+        emit_interface: true
         overrides:
           - db_type: "uuid"
-            go_type: "github.com/google/uuid.uuid"
+            go_type: "github.com/google/uuid.UUID"

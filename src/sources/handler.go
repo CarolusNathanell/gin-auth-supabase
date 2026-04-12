@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -19,9 +20,36 @@ func NewHandler(svc *Service) *Handler {
 }
 
 func (h *Handler) HandleAdd(c *gin.Context) {
-	var req SourcesAdd
+	var req SourceAdd
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	switch req.Type {
+	case "MP4":
+		if !strings.HasSuffix(req.Url, ".mp4") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "MP4 type requires a link ending in .mp4"})
+			return
+		}
+	case "RTSP":
+		if !strings.HasPrefix(req.Url, "rtsp://") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "RTSP type requires a link starting with rtsp://"})
+			return
+		}
+	case "Webcam":
+		if !strings.HasPrefix(req.Url, "http://") && !strings.HasPrefix(req.Url, "https://") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Webcam streams must be HTTP or HTTPS"})
+			return
+		}
+	case "Youtube":
+		if !strings.HasPrefix(req.Url, "http://") && !strings.HasPrefix(req.Url, "https://") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Youtube streams must be HTTP or HTTPS"})
+			return
+		}
+	case "Other":
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Webcam streams must be HTTP or HTTPS"})
 		return
 	}
 
@@ -114,9 +142,36 @@ func (h *Handler) HandleUpdateById(c *gin.Context) {
 		return
 	}
 
-	var req SourcesUpdate
+	var req SourceUpdate
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	switch req.Type {
+	case "MP4":
+		if !strings.HasSuffix(req.Url, ".mp4") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "MP4 type requires a link ending in .mp4"})
+			return
+		}
+	case "RTSP":
+		if !strings.HasPrefix(req.Url, "rtsp://") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "RTSP type requires a link starting with rtsp://"})
+			return
+		}
+	case "Webcam":
+		if !strings.HasPrefix(req.Url, "http://") && !strings.HasPrefix(req.Url, "https://") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Webcam streams must be HTTP or HTTPS"})
+			return
+		}
+	case "Youtube":
+		if !strings.HasPrefix(req.Url, "http://") && !strings.HasPrefix(req.Url, "https://") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Youtube streams must be HTTP or HTTPS"})
+			return
+		}
+	case "Other":
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Webcam streams must be HTTP or HTTPS"})
 		return
 	}
 
@@ -136,7 +191,13 @@ func (h *Handler) HandleDeleteById(c *gin.Context) {
 		return
 	}
 
-	source, err := h.svc.DeleteById(c.Request.Context(), sourceId)
+	var req SourceDelete
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	source, err := h.svc.DeleteById(c.Request.Context(), sourceId, req.UserID)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return

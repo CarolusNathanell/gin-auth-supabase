@@ -1,4 +1,5 @@
 CREATE TYPE SourceType AS ENUM ('RTSP', 'MP4', 'Webcam', 'Youtube', 'Other');
+CREATE TYPE AuditType AS ENUM ('CREATE', 'UPDATE', 'DELETE');
 
 CREATE TABLE sources (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -37,19 +38,12 @@ CREATE TABLE snapshots (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-/*
-CREATE TABLE attendance_logs (
+CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    assembly_point_id INT NOT NULL REFERENCES sources(id),
-    personnel_count INT NOT NULL,
+    user_id UUID NOT NULL,
+    action AuditType NOT NULL,
+    table_name TEXT NOT NULL,
+    old_value JSONB,
+    new_value JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
-CREATE TABLE personnel (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    first_name TEXT NOT NULL,
-    last_name TEXT NOT NULL,
-    image_link TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-*/

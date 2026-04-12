@@ -97,3 +97,20 @@ SELECT * FROM snapshots WHERE source_id = $1;
 
 -- name: GetSnapshotById :one
 SELECT * FROM snapshots WHERE id = $1;
+
+-- name: CreateAuditLog :exec
+INSERT INTO audit_logs (
+    user_id,
+    action,
+    table_name,
+    old_value,
+    new_value
+) VALUES (
+    $1, $2, $3, $4, $5
+);
+
+-- name: GetAuditLogs :many
+SELECT * FROM audit_logs;
+
+-- name: GetAuditLogsByUser :many
+SELECT * FROM audit_logs WHERE user_id = $1;

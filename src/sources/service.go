@@ -2,52 +2,55 @@ package sources
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"gin-auth-supabase/src/db"
-	"strings"
+	store "gin-auth-supabase/src/internal"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Service struct {
-	q *db.Queries
+	q     *db.Queries
+	store store.Store
 }
 
-func NewService(q *db.Queries) *Service {
-	return &Service{q: q}
+func NewService(q *db.Queries, pool *pgxpool.Pool) *Service {
+	store := store.NewStore(pool)
+	return &Service{q: q, store: store}
 }
 
-func (s *Service) Add(ctx context.Context, req SourcesAdd) (*db.Source, error) {
-	switch req.Type {
-	case "MP4":
-		if !strings.HasSuffix(req.Url, ".mp4") {
-			return nil, errors.New("MP4 type requires a link ending in .mp4")
-		}
-	case "RTSP":
-		if !strings.HasPrefix(req.Url, "rtsp://") {
-			return nil, errors.New("RTSP type requires a link starting with rtsp://")
-		}
-	case "Webcam":
-		if !strings.HasPrefix(req.Url, "http://") && !strings.HasPrefix(req.Url, "https://") {
-			return nil, errors.New("Webcam streams must be HTTP or HTTPS")
-		}
-	case "Youtube":
-		if !strings.HasPrefix(req.Url, "http://") && !strings.HasPrefix(req.Url, "https://") {
-			return nil, errors.New("Youtube streams must be HTTP or HTTPS")
-		}
-	case "Other":
-	default:
-		return nil, errors.New("Invalid source type")
+func (s *Service) Add(ctx context.Context, req SourceAdd) (*db.Source, error) {
+	if s.store == nil {
+		println("store is nil")
 	}
+	var source db.Source
 
-	source, err := s.q.CreateSource(ctx, db.CreateSourceParams{
-		Name:       req.Name,
-		Type:       db.Sourcetype(req.Type),
-		Url:        req.Url,
-		FpsTarget:  req.FpsTarget,
-		Resolution: req.Resolution,
-		Status:     *req.Status,
+	err := s.store.ExecTx(ctx, func(q *db.Queries) error {
+		var err error
+		source, err = s.q.CreateSource(ctx, db.CreateSourceParams{
+			Name:       req.Name,
+			Type:       db.Sourcetype(req.Type),
+			Url:        req.Url,
+			FpsTarget:  req.FpsTarget,
+			Resolution: req.Resolution,
+			Status:     *req.Status,
+		})
+		if err != nil {
+			return err
+		}
+
+		rawSourceJson, err := json.Marshal(source)
+
+		return q.CreateAuditLog(ctx, db.CreateAuditLogParams{
+			UserID:    req.UserID,
+			Action:    db.AudittypeCREATE,
+			TableName: "sources",
+			NewValue:  json.RawMessage(rawSourceJson),
+		})
 	})
+
 	return &source, err
 }
 
@@ -78,41 +81,62 @@ func (s *Service) RequestByID(ctx context.Context, sourceId uuid.UUID) (*db.Sour
 	return &source, nil
 }
 
-func (s *Service) UpdateById(ctx context.Context, req SourcesUpdate, sourceId uuid.UUID) (*db.Source, error) {
-	switch req.Type {
-	case "MP4":
-		if !strings.HasSuffix(req.Url, ".mp4") {
-			return nil, errors.New("MP4 type requires a link ending in .mp4")
+func (s *Service) UpdateById(ctx context.Context, req SourceUpdate, sourceId uuid.UUID) (*db.Source, error) {
+	var newSource db.Source
+	err := s.store.ExecTx(ctx, func(q *db.Queries) error {
+		var err error
+		oldSource, err := s.q.GetSourceByID(ctx, sourceId)
+		if err != nil {
+			return err
 		}
-	case "RTSP":
-		if !strings.HasPrefix(req.Url, "rtsp://") {
-			return nil, errors.New("RTSP type requires a link starting with rtsp://")
-		}
-	case "Webcam":
-		if !strings.HasPrefix(req.Url, "http://") && !strings.HasPrefix(req.Url, "https://") {
-			return nil, errors.New("Webcam streams must be HTTP or HTTPS")
-		}
-	default:
-		return nil, errors.New("Invalid source type")
-	}
 
-	source, err := s.q.UpdateSource(ctx, db.UpdateSourceParams{
-		ID:         sourceId,
-		Name:       req.Name,
-		Type:       db.Sourcetype(req.Type),
-		Url:        req.Url,
-		FpsTarget:  req.FpsTarget,
-		Resolution: req.Resolution,
-		Status:     *req.Status,
+		newSource, err = s.q.UpdateSource(ctx, db.UpdateSourceParams{
+			ID:         sourceId,
+			Name:       req.Name,
+			Type:       db.Sourcetype(req.Type),
+			Url:        req.Url,
+			FpsTarget:  req.FpsTarget,
+			Resolution: req.Resolution,
+			Status:     *req.Status,
+		})
+		if err != nil {
+			return err
+		}
+
+		oldSourceJson, err := json.Marshal(oldSource)
+		newSourceJson, err := json.Marshal(newSource)
+
+		return q.CreateAuditLog(ctx, db.CreateAuditLogParams{
+			UserID:    req.UserID,
+			Action:    db.AudittypeUPDATE,
+			TableName: "sources",
+			OldValue:  json.RawMessage(oldSourceJson),
+			NewValue:  json.RawMessage(newSourceJson),
+		})
 	})
-	return &source, err
+
+	return &newSource, err
 }
 
-func (s *Service) DeleteById(ctx context.Context, sourceId uuid.UUID) (*db.Source, error) {
-	source, err := s.q.DeleteSource(ctx, sourceId)
-	if err != nil {
-		return nil, errors.New("Source not found")
-	}
+func (s *Service) DeleteById(ctx context.Context, sourceId uuid.UUID, userId uuid.UUID) (*db.Source, error) {
+	var source db.Source
 
-	return &source, nil
+	err := s.store.ExecTx(ctx, func(q *db.Queries) error {
+		var err error
+		source, err = s.q.DeleteSource(ctx, sourceId)
+		if err != nil {
+			return err
+		}
+
+		sourceJson, err := json.Marshal(source)
+
+		return q.CreateAuditLog(ctx, db.CreateAuditLogParams{
+			UserID:    userId,
+			Action:    db.AudittypeDELETE,
+			TableName: "sources",
+			OldValue:  json.RawMessage(sourceJson),
+		})
+	})
+
+	return &source, err
 }

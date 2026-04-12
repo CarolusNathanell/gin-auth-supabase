@@ -12,6 +12,37 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createAuditLog = `-- name: CreateAuditLog :exec
+INSERT INTO audit_logs (
+    user_id,
+    action,
+    table_name,
+    old_value,
+    new_value
+) VALUES (
+    $1, $2, $3, $4, $5
+)
+`
+
+type CreateAuditLogParams struct {
+	UserID    uuid.UUID `json:"user_id"`
+	Action    Audittype `json:"action"`
+	TableName string    `json:"table_name"`
+	OldValue  []byte    `json:"old_value"`
+	NewValue  []byte    `json:"new_value"`
+}
+
+func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) error {
+	_, err := q.db.Exec(ctx, createAuditLog,
+		arg.UserID,
+		arg.Action,
+		arg.TableName,
+		arg.OldValue,
+		arg.NewValue,
+	)
+	return err
+}
+
 const createHeadCountLog = `-- name: CreateHeadCountLog :one
 INSERT INTO head_count_logs (
     source_id,
@@ -51,14 +82,18 @@ func (q *Queries) CreateHeadCountLog(ctx context.Context, arg CreateHeadCountLog
 
 const createSnapshot = `-- name: CreateSnapshot :one
 INSERT INTO snapshots (
+    id,
     source_id,
     image_path,
     head_count_at_time
-) VALUES ($1, $2, $3)
-RETURNING id, source_id, image_path, head_count_at_time, created_at;
+) VALUES (
+    $1, $2, $3, $4
+)
+RETURNING id, source_id, image_path, head_count_at_time, created_at
 `
 
 type CreateSnapshotParams struct {
+	ID              uuid.UUID `json:"id"`
 	SourceID        uuid.UUID `json:"source_id"`
 	ImagePath       string    `json:"image_path"`
 	HeadCountAtTime int32     `json:"head_count_at_time"`
@@ -66,6 +101,7 @@ type CreateSnapshotParams struct {
 
 func (q *Queries) CreateSnapshot(ctx context.Context, arg CreateSnapshotParams) (Snapshot, error) {
 	row := q.db.QueryRow(ctx, createSnapshot,
+		arg.ID,
 		arg.SourceID,
 		arg.ImagePath,
 		arg.HeadCountAtTime,
@@ -205,6 +241,70 @@ func (q *Queries) DeleteSource(ctx context.Context, id uuid.UUID) (Source, error
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getAuditLogs = `-- name: GetAuditLogs :many
+SELECT id, user_id, action, table_name, old_value, new_value, created_at FROM audit_logs
+`
+
+func (q *Queries) GetAuditLogs(ctx context.Context) ([]AuditLog, error) {
+	rows, err := q.db.Query(ctx, getAuditLogs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AuditLog
+	for rows.Next() {
+		var i AuditLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Action,
+			&i.TableName,
+			&i.OldValue,
+			&i.NewValue,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAuditLogsByUser = `-- name: GetAuditLogsByUser :many
+SELECT id, user_id, action, table_name, old_value, new_value, created_at FROM audit_logs WHERE user_id = $1
+`
+
+func (q *Queries) GetAuditLogsByUser(ctx context.Context, userID uuid.UUID) ([]AuditLog, error) {
+	rows, err := q.db.Query(ctx, getAuditLogsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AuditLog
+	for rows.Next() {
+		var i AuditLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Action,
+			&i.TableName,
+			&i.OldValue,
+			&i.NewValue,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getHeadCountLogBySource = `-- name: GetHeadCountLogBySource :many
