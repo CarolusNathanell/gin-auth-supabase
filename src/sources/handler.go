@@ -55,11 +55,18 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 
 	// request ke BE AI
 	var parseReq struct {
-		Type string `json:"type"`
-		Url  string `json:"url"`
+		Type     string    `json:"type"`
+		Url      string    `json:"url"`
+		SourceID uuid.UUID `json:"source_id"`
 	}
 	parseReq.Type = req.Type
 	parseReq.Url = req.Url
+
+	var err error
+	parseReq.SourceID, err = uuid.NewRandom()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
 
 	jsonReq, err := json.Marshal(parseReq)
 	if err != nil {
@@ -91,12 +98,14 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 		return
 	}
 
-	sources, err := h.svc.Add(c.Request.Context(), req)
+	req.SourceID = parseReq.SourceID
+
+	source, err := h.svc.Add(c.Request.Context(), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, sources)
+	c.JSON(http.StatusCreated, source)
 }
 
 func (h *Handler) HandleRequest(c *gin.Context) {

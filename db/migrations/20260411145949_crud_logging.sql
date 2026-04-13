@@ -2,7 +2,7 @@
 CREATE TYPE AuditType AS ENUM ('CREATE', 'UPDATE', 'DELETE');
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL,
+    user_id UUID NOT NULL REFERENCES users(id),
     action AuditType NOT NULL,
     table_name TEXT NOT NULL,
     old_value JSONB,

@@ -41,14 +41,15 @@ func (s *Service) Add(ctx context.Context, req SourceAdd) (*db.Source, error) {
 			return err
 		}
 
-		rawSourceJson, err := json.Marshal(source)
+		return nil // for BE AI Testing
+		// rawSourceJson, err := json.Marshal(source)
 
-		return q.CreateAuditLog(ctx, db.CreateAuditLogParams{
-			UserID:    req.UserID,
-			Action:    db.AudittypeCREATE,
-			TableName: "sources",
-			NewValue:  json.RawMessage(rawSourceJson),
-		})
+		// return q.CreateAuditLog(ctx, db.CreateAuditLogParams{
+		// 	UserID:    req.UserID,
+		// 	Action:    db.AudittypeCREATE,
+		// 	TableName: "sources",
+		// 	NewValue:  json.RawMessage(rawSourceJson),
+		// })
 	})
 
 	return &source, err
