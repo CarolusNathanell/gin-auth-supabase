@@ -12,7 +12,6 @@ import (
 	headCountLog "gin-auth-supabase/src/head_count_log"
 	"gin-auth-supabase/src/snapshots"
 	"gin-auth-supabase/src/sources"
-	websock "gin-auth-supabase/src/websocket"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -45,22 +44,32 @@ func main() {
 	snapshotsHandler := snapshots.NewHandler(snapshotsService)
 	auditLogHandler := auditLog.NewHandler(auditLogService)
 
-	wsHub := websock.NewWSHub()
-	go wsHub.Run()
+	// wsHub := websock.NewWSHub()
+	// go wsHub.Run()
 
 	r := gin.Default()
 
+	origins := []string{"http://localhost:3000"}
+	if fe := os.Getenv("FE_URL"); fe != "" {
+		origins = append(origins, fe)
+	}
+	if ai := os.Getenv("BE_AI_URL"); ai != "" {
+		origins = append(origins, ai)
+	}
+
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{os.Getenv("FE_URL"), os.Getenv("BE_AI_URL")},
+		AllowAllOrigins: true,
+		// AllowOrigins:     origins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: false,
+		AllowCredentials: true,
+		AllowWebSockets:  true,
 		MaxAge:           12 * time.Hour,
 	}))
 
-	r.POST("/logs", websock.ReceiveLogs(wsHub))
-	r.GET("/ws", websock.HandleWS(wsHub))
+	// r.POST("/logs", websock.ReceiveLogs(wsHub))
+	// r.GET("/ws", websock.HandleWS(wsHub))
 
 	r.Static("public/snapshots", "./public/snapshots/")
 

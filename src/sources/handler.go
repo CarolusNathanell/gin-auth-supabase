@@ -53,7 +53,7 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 		return
 	}
 
-	// request ke BE AI
+	// parse request to BE AI
 	var parseReq struct {
 		Type     string    `json:"type"`
 		Url      string    `json:"url"`
@@ -62,17 +62,20 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 	parseReq.Type = req.Type
 	parseReq.Url = req.Url
 
+	// generate random uuid for source_id
 	var err error
 	parseReq.SourceID, err = uuid.NewRandom()
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 
+	// marshal the parseReq
 	jsonReq, err := json.Marshal(parseReq)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 	}
 
+	// send POST probe request to BE AI
 	resp, err := http.Post(os.Getenv("BE_AI_URL")+"/probe", "application/json", bytes.NewBuffer(jsonReq))
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Probe service unreachable"})
@@ -81,8 +84,11 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 	defer resp.Body.Close()
 
 	var probeResult struct {
-		Exists bool   `json:"exists"`
-		Detail string `json:"detail"`
+		Exists     bool   `json:"exists"`
+		Detail     string `json:"detail"`
+		Url        string `json:"url"`
+		Resolution string `json:"resolution"`
+		Fps        int    `json:"fps"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&probeResult); err != nil {
@@ -99,6 +105,11 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 	}
 
 	req.SourceID = parseReq.SourceID
+	status := true
+	req.Status = &status
+	req.Url = probeResult.Url
+	req.Resolution = probeResult.Resolution
+	req.FpsTarget = int32(probeResult.Fps)
 
 	source, err := h.svc.Add(c.Request.Context(), req)
 	if err != nil {

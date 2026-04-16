@@ -3,23 +3,23 @@ package sources
 import "github.com/google/uuid"
 
 type SourceAdd struct {
-	SourceID   uuid.UUID `json:"source_id" binding:"required"`
+	SourceID   uuid.UUID `json:"source_id"`
 	Name       string    `json:"name" binding:"required"`
 	Type       string    `json:"type" binding:"required,oneof=MP4 RTSP Webcam Youtube Other"`
-	Url        string    `json:"url" binding:"required,url"`
-	FpsTarget  int32     `json:"fps_target" binding:"required"`
-	Resolution string    `json:"resolution" binding:"required"`
-	Status     *bool     `json:"status" binding:"required"`
-	UserID     uuid.UUID `json:"user_id" binding:"required"`
+	Url        string    `json:"url" binding:"required"`
+	FpsTarget  int32     `json:"fps_target"`
+	Resolution string    `json:"resolution"`
+	Status     *bool     `json:"status"`
+	UserID     uuid.UUID `json:"user_id"`
 }
 
 type SourceUpdate struct {
-	Name       string    `json:"name" binding:"required"`
-	Type       string    `json:"type" binding:"required,oneof=MP4 RTSP Webcam Youtube Other"`
-	Url        string    `json:"url" binding:"required,url"`
-	FpsTarget  int32     `json:"fps_target" binding:"required"`
-	Resolution string    `json:"resolution" binding:"required"`
-	Status     *bool     `json:"status" binding:"required"`
+	Name       string    `json:"name"`
+	Type       string    `json:"type" binding:"oneof=MP4 RTSP Webcam Youtube Other"`
+	Url        string    `json:"url"`
+	FpsTarget  int32     `json:"fps_target"`
+	Resolution string    `json:"resolution"`
+	Status     *bool     `json:"status"`
 	UserID     uuid.UUID `json:"user_id" binding:"required"`
 }
 
