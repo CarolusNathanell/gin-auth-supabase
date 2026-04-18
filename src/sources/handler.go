@@ -11,6 +11,20 @@ import (
 	"github.com/google/uuid"
 )
 
+type ProbeReq struct {
+	Type     string    `json:"type"`
+	Url      string    `json:"url"`
+	SourceID uuid.UUID `json:"id"`
+}
+
+type ProbeRes struct {
+	Exists     bool   `json:"exists"`
+	Detail     string `json:"detail"`
+	Url        string `json:"url"`
+	Resolution string `json:"resolution"`
+	Fps        int    `json:"fps"`
+}
+
 type Handler struct {
 	svc *Service
 }
@@ -53,12 +67,8 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 		return
 	}
 
-	// parse request to BE AI
-	var parseReq struct {
-		Type     string    `json:"type"`
-		Url      string    `json:"url"`
-		SourceID uuid.UUID `json:"source_id"`
-	}
+	// probe request to BE AI
+	var parseReq ProbeReq
 	parseReq.Type = req.Type
 	parseReq.Url = req.Url
 
@@ -83,33 +93,19 @@ func (h *Handler) HandleAdd(c *gin.Context) {
 	}
 	defer resp.Body.Close()
 
-	var probeResult struct {
-		Exists     bool   `json:"exists"`
-		Detail     string `json:"detail"`
-		Url        string `json:"url"`
-		Resolution string `json:"resolution"`
-		Fps        int    `json:"fps"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&probeResult); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse probe response"})
+	var parseRes ProbeRes
+	if err := json.NewDecoder(resp.Body).Decode(&parseRes); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to probe response"})
 		return
 	}
 
-	if !probeResult.Exists {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error":  "Source verification failed",
-			"detail": probeResult.Detail,
-		})
-		return
-	}
-
+	// assign the probe result into req (db variable)
 	req.SourceID = parseReq.SourceID
 	status := true
 	req.Status = &status
-	req.Url = probeResult.Url
-	req.Resolution = probeResult.Resolution
-	req.FpsTarget = int32(probeResult.Fps)
+	req.Url = parseRes.Url
+	req.Resolution = parseRes.Resolution
+	req.FpsTarget = int32(parseRes.Fps)
 
 	source, err := h.svc.Add(c.Request.Context(), req)
 	if err != nil {
@@ -155,6 +151,10 @@ func (h *Handler) HandleRequestById(c *gin.Context) {
 	c.JSON(http.StatusOK, source)
 }
 
+func (res ProbeRes) ProbeSource(req ProbeReq) {
+
+}
+
 func (h *Handler) HandleUpdateById(c *gin.Context) {
 	sourceId, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -194,6 +194,44 @@ func (h *Handler) HandleUpdateById(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Webcam streams must be HTTP or HTTPS"})
 		return
 	}
+
+	// probe request to BE AI
+	var parseReq ProbeReq
+	parseReq.Type = req.Type
+	parseReq.Url = req.Url
+
+	// generate random uuid for source_id
+	parseReq.SourceID, err = uuid.NewRandom()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
+
+	// marshal the parseReq
+	jsonReq, err := json.Marshal(parseReq)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
+
+	// send POST probe request to BE AI
+	resp, err := http.Post(os.Getenv("BE_AI_URL")+"/probe", "application/json", bytes.NewBuffer(jsonReq))
+	if err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Probe service unreachable"})
+		return
+	}
+	defer resp.Body.Close()
+
+	var parseRes ProbeRes
+	if err := json.NewDecoder(resp.Body).Decode(&parseRes); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to probe probe response"})
+		return
+	}
+
+	// assign the probe result into req (db variable)
+	status := true
+	req.Status = &status
+	req.Url = parseRes.Url
+	req.Resolution = parseRes.Resolution
+	req.FpsTarget = int32(parseRes.Fps)
 
 	source, err := h.svc.UpdateById(c.Request.Context(), req, sourceId)
 	if err != nil {

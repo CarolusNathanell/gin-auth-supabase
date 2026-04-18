@@ -22,11 +22,7 @@ func NewService(q *db.Queries, pool *pgxpool.Pool) *Service {
 }
 
 func (s *Service) Add(ctx context.Context, req SourceAdd) (*db.Source, error) {
-	if s.store == nil {
-		println("store is nil")
-	}
 	var source db.Source
-
 	err := s.store.ExecTx(ctx, func(q *db.Queries) error {
 		var err error
 		source, err = s.q.CreateSource(ctx, db.CreateSourceParams{
@@ -41,15 +37,15 @@ func (s *Service) Add(ctx context.Context, req SourceAdd) (*db.Source, error) {
 			return err
 		}
 
-		return nil // for BE AI Testing
-		// rawSourceJson, err := json.Marshal(source)
+		// return nil // for BE AI Testing
+		rawSourceJson, err := json.Marshal(source)
 
-		// return q.CreateAuditLog(ctx, db.CreateAuditLogParams{
-		// 	UserID:    req.UserID,
-		// 	Action:    db.AudittypeCREATE,
-		// 	TableName: "sources",
-		// 	NewValue:  json.RawMessage(rawSourceJson),
-		// })
+		return q.CreateAuditLog(ctx, db.CreateAuditLogParams{
+			UserID:    req.UserID,
+			Action:    db.AudittypeCREATE,
+			TableName: "sources",
+			NewValue:  json.RawMessage(rawSourceJson),
+		})
 	})
 
 	return &source, err

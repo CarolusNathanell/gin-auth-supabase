@@ -90,9 +90,9 @@ func main() {
 
 		SourcesApi := Api.Group("/sources")
 		SourcesApi.GET("", SourcesHandler.HandleRequest)
-		SourcesApi.POST("", SourcesHandler.HandleAdd)
 		SourcesApi.Use(auth.AuthMiddleware())
 		{
+			SourcesApi.POST("", SourcesHandler.HandleAdd)
 			SourcesApi.GET("/:id", SourcesHandler.HandleRequestById)
 			SourcesApi.PUT("/:id", SourcesHandler.HandleUpdateById)
 			SourcesApi.DELETE("/:id", SourcesHandler.HandleDeleteById)
