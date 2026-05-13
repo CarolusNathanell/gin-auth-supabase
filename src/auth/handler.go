@@ -87,9 +87,37 @@ func (h *Handler) HandleRequest(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+func (h *Handler) VerifyForgotPasswordToken(c *gin.Context) {
+	var req VerifyForgotPasswordTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	err := h.svc.VerifyForgotPasswordToken(c, req.Token)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrTokenNotFound):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid token"})
+		case errors.Is(err, ErrTokenUsed):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Token has already been used"})
+		case errors.Is(err, ErrTokenExpired):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Token has expired"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong"})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "token verified",
+	})
+}
+
 func (h *Handler) HandleForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
-
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),

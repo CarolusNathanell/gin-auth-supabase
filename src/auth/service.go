@@ -14,7 +14,12 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ErrEmailNotFound = errors.New("email not found")
+var (
+	ErrEmailNotFound = errors.New("email not found")
+	ErrTokenNotFound = errors.New("invalid token")
+	ErrTokenExpired  = errors.New("token expired")
+	ErrTokenUsed     = errors.New("token used")
+)
 
 type Service struct {
 	q *db.Queries
@@ -79,8 +84,19 @@ func (s *Service) Request(ctx context.Context, userId uuid.UUID) (*db.User, erro
 	return &user, nil
 }
 
-func (s *Service) VerifyForgotPasswordToken(token string) {
-
+func (s *Service) VerifyForgotPasswordToken(ctx context.Context, token string) error {
+	tokenUUID := uuid.MustParse(token)
+	tokenStat, err := s.q.GetForgotPasswordToken(ctx, tokenUUID)
+	if err != nil {
+		return ErrTokenNotFound
+	}
+	if tokenStat.Used {
+		return ErrTokenUsed
+	}
+	if tokenStat.Expired.Time.After(time.Now()) {
+		return ErrTokenExpired
+	}
+	return nil
 }
 
 func (s *Service) ForgotPassword(ctx context.Context, req ForgotPasswordRequest) error {

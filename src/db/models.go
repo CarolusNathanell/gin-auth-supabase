@@ -141,7 +141,7 @@ type Source struct {
 type TokenForgotPassword struct {
 	Token   uuid.UUID          `json:"token"`
 	UserID  uuid.UUID          `json:"user_id"`
-	Used    pgtype.Bool        `json:"used"`
+	Used    bool               `json:"used"`
 	Expired pgtype.Timestamptz `json:"expired"`
 }
 
