@@ -7,11 +7,14 @@ import (
 	"time"
 
 	"gin-auth-supabase/src/db"
+	"gin-auth-supabase/src/utils"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var ErrEmailNotFound = errors.New("email not found")
 
 type Service struct {
 	q *db.Queries
@@ -74,4 +77,27 @@ func (s *Service) Request(ctx context.Context, userId uuid.UUID) (*db.User, erro
 	}
 
 	return &user, nil
+}
+
+func (s *Service) VerifyForgotPasswordToken(token string) {
+
+}
+
+func (s *Service) ForgotPassword(ctx context.Context, req ForgotPasswordRequest) error {
+	user, err := s.q.GetUserByEmailUsername(ctx, req.Email)
+	if err != nil {
+		return ErrEmailNotFound
+	}
+
+	token, err := s.q.CreateForgotPasswordToken(ctx, user.ID)
+	if err != nil {
+		return errors.New("failed to create token")
+	}
+
+	err = utils.SendEmail(user.Email, token.Token.String())
+	if err != nil {
+		return errors.New("failed to send token")
+	}
+
+	return nil
 }
